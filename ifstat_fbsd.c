@@ -1,7 +1,7 @@
 /*
  * Network speed application for FreeBSD.
- * Use in conjunction with 'Command Output'
- * KDE applet: https://github.com/Zren/plasma-applet-commandoutput
+ * Use in conjunction with 'Command Output' KDE applet:
+ * https://github.com/Zren/plasma-applet-commandoutput
  *
  * Based on https://github.com/lcdproc/lcdproc
  * machine_FreeBSD.c: machine_get_iface_stats()
@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdint.h>
 #include <string.h>
 #include <sysexits.h>
 #include <sys/sysctl.h>
@@ -127,7 +128,7 @@ machine_get_iface_stats(IfaceInfo * interface)
 }
 
 void
-print_speed(double timestamp_old_s, double rx_bytes, double tx_bytes) {
+print_speed(double timestamp_old_s, uint64_t rx_bytes, uint64_t tx_bytes) {
 	double bps;
 	double interval_s;
 	struct timeval tv;
@@ -179,8 +180,8 @@ get_traffic_speed(IfaceInfo iface) {
 	char stmp[NAME_MAX];
 	ssize_t len;
 	int fd;
-	double rx_bytes, rx_bold = 0.0;
-	double tx_bytes, tx_bold = 0.0;
+	uint64_t rx_bytes, rx_bold = 0;
+	uint64_t tx_bytes, tx_bold = 0;
 	double timestamp_s = 0.0;
 	double timestamp_s_old = 0.0;
 	struct timeval tv;
@@ -265,8 +266,16 @@ get_traffic_speed(IfaceInfo iface) {
 		err(EX_IOERR, "%s: pwrite", __func__);
 	}
 
-	rx_bytes = iface.rc_byte - rx_bold;
-	tx_bytes = iface.tr_byte - tx_bold;
+	if ( iface.rc_byte >= rx_bold ) {
+		rx_bytes = iface.rc_byte - rx_bold;
+	} else {
+		rx_bytes = UINT64_MAX - rx_bold + iface.rc_byte;
+	}
+	if ( iface.tr_byte >= tx_bold ) {
+		tx_bytes = iface.tr_byte - tx_bold;
+	} else {
+		tx_bytes = UINT64_MAX - tx_bold + iface.tr_byte;
+	}
 	print_speed(timestamp_s_old, rx_bytes, tx_bytes);
 	return 0;
 }
